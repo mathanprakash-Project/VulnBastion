@@ -1,0 +1,106 @@
+[
+  {
+    "rank": 1,
+    "asset": "load-balancer-prod-02",
+    "vulnerability": "Citrix ADC Session Token Leak (CitrixBleed)",
+    "cve": "CVE-2023-4966",
+    "risk_score": 9.0,
+    "explanation": {
+      "why_it_matters": "The load-balancer-prod-02 asset is exposed to the internet and has a critical vulnerability (Citrix ADC Session Token Leak, CVE-2023-4966) that has been open for 180 days, posing a significant risk to the payment processing service, especially with the active CitrixBleed Exploitation campaign by the IronVeil threat actor.",
+      "nist_control_id": "SI-2",
+      "nist_control_name": "Flaw Remediation",
+      "nist_guidance": "Identify, report, and correct system flaws, and install security-relevant software and firmware updates within an organization-defined time period of the release of the updates to remediate system flaws and reduce the risk of successful attacks.",
+      "recommended_action": "Deploy the available patch for Citrix ADC Session Token Leak (CVE-2023-4966) to the load-balancer-prod-02 asset within the next 72 hours to mitigate the vulnerability.",
+      "success_metric": "Patch deployment verified on the load-balancer-prod-02 asset, and a follow-up vulnerability scan confirms the remediation of the Citrix ADC Session Token Leak vulnerability.",
+      "_validation_warning": false,
+      "_candidates_considered": [
+        "SC-30",
+        "SI-2",
+        "SC-30(3)",
+        "SI-7(7)",
+        "RA-5",
+        "SI-4(11)",
+        "IR-4",
+        "IR-4(11)"
+      ]
+    }
+  },
+  {
+    "rank": 2,
+    "asset": "load-balancer-prod-01",
+    "vulnerability": "Citrix ADC Session Token Leak (CitrixBleed)",
+    "cve": "CVE-2023-4966",
+    "risk_score": 9.0,
+    "explanation": {
+      "why_it_matters": "The load-balancer-prod-01 asset is exposed to the internet and has an unpatched critical vulnerability (Citrix ADC Session Token Leak, CVE-2023-4966) that has been open for 180 days, posing a significant risk to the organization, especially with the active CitrixBleed Exploitation campaign by the IronVeil threat actor and the lack of EDR coverage.",
+      "nist_control_id": "SI-2",
+      "nist_control_name": "Flaw Remediation",
+      "nist_guidance": "Identify, report, and correct system flaws, and install security-relevant software and firmware updates within an organization-defined time period of the release of the updates to ensure timely remediation of vulnerabilities.",
+      "recommended_action": "Deploy the available patch for the Citrix ADC Session Token Leak vulnerability (CVE-2023-4966) to the load-balancer-prod-01 asset within the next 72 hours to mitigate the risk of exploitation.",
+      "success_metric": "Patch deployment verified on the load-balancer-prod-01 asset, and a follow-up vulnerability scan confirms the remediation of the Citrix ADC Session Token Leak vulnerability.",
+      "_validation_warning": false,
+      "_candidates_considered": [
+        "SC-30",
+        "SI-2",
+        "SC-30(3)",
+        "SI-7(7)",
+        "RA-5",
+        "SI-4(11)",
+        "IR-4",
+        "IR-4(11)"
+      ]
+    }
+  },
+  {
+    "rank": 3,
+    "asset": "vpn-edge-01",
+    "vulnerability": "Fortinet SSL-VPN Heap Buffer Overflow RCE",
+    "cve": "CVE-2024-21762",
+    "risk_score": 8.45,
+    "explanation": {
+      "why_it_matters": "The vpn-edge-01 asset is exposed to the internet and has a critical vulnerability (CVE-2024-21762) with a CVSS score of 9.8, which has been open for 27 days. This poses a significant risk to the organization, especially considering the CrimsonJackal threat actor's Gateway Breaker campaign and the potential for ransomware attacks. The lack of EDR coverage on this asset further exacerbates the risk.",
+      "nist_control_id": "SI-2",
+      "nist_control_name": "Flaw Remediation",
+      "nist_guidance": "Organizations must identify, report, and correct system flaws, including testing software and firmware updates for effectiveness and potential side effects before installation, and installing security-relevant updates within a defined time period. This control is crucial in addressing the vulnerability on the vpn-edge-01 asset.",
+      "recommended_action": "Apply the available patch for CVE-2024-21762 to the vpn-edge-01 asset within the next 72 hours to mitigate the risk of exploitation by the CrimsonJackal threat actor.",
+      "success_metric": "Patch applied to 100% of vpn-edge-01 instances, verified through configuration management and vulnerability scanning tools.",
+      "_validation_warning": false,
+      "_candidates_considered": [
+        "SI-2",
+        "SC-7(7)",
+        "RA-5",
+        "SC-7",
+        "SI-7(7)",
+        "SC-7(10)",
+        "IR-4",
+        "IR-4(11)"
+      ]
+    }
+  },
+  {
+    "rank": 4,
+    "asset": "vpn-edge-02",
+    "vulnerability": "Fortinet SSL-VPN Heap Buffer Overflow RCE",
+    "cve": "CVE-2024-21762",
+    "risk_score": 8.45,
+    "explanation": {
+      "why_it_matters": "The vpn-edge-02 production asset is exposed to the internet and has a critical vulnerability (CVE-2024-21762) with a CVSS score of 9.8, which has been open for 27 days. This poses a significant risk to the organization, especially considering the threat intel on CrimsonJackal's Gateway Breaker campaign and the potential for ransomware attacks. The lack of EDR coverage on this asset further exacerbates the risk.",
+      "nist_control_id": "SI-2",
+      "nist_control_name": "Flaw Remediation",
+      "nist_guidance": "Organizations should identify, report, and correct system flaws, including testing software and firmware updates for effectiveness and potential side effects before installation, and install security-relevant updates within a defined time period. This control is crucial in addressing the vulnerability on the vpn-edge-02 asset.",
+      "recommended_action": "Apply the available patch for CVE-2024-21762 to the vpn-edge-02 production asset within the next 72 hours to mitigate the risk of exploitation by CrimsonJackal or other threat actors.",
+      "success_metric": "Patch applied to 100% of vpn-edge-02 production assets, verified through configuration management and vulnerability scanning tools.",
+      "_validation_warning": false,
+      "_candidates_considered": [
+        "SI-2",
+        "SC-7(7)",
+        "RA-5",
+        "SC-7",
+        "SI-7(7)",
+        "SC-7(10)",
+        "IR-4",
+        "IR-4(11)"
+      ]
+    }
+  }
+]

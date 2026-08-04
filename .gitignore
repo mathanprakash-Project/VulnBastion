@@ -1,0 +1,12 @@
+.env
+.DS_Store
+__pycache__/
+*.pyc
+*.egg-info/
+.streamlit/secrets.toml
+data/chroma_nist/
+*.csv
+.venv/
+venv/
+.cache/
+key.env
