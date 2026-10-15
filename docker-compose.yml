@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vulnbastion-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - STRUCTURED_LOGS=false
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - PRIMARY_MODEL=llama-3.3-70b-versatile
+      - FALLBACK_MODEL=llama-3.1-8b-instant
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "src/health.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vulnbastion-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - STRUCTURED_LOGS=true
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - PRIMARY_MODEL=llama-3.3-70b-versatile
+      - FALLBACK_MODEL=llama-3.1-8b-instant
+    volumes:
+      - ./data:/app/data
+    entrypoint: ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "python", "src/health.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+

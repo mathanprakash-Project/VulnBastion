@@ -1,10 +1,13 @@
-# risk_engine.py
-
-import pandas as pd
-import numpy as np
-from typing import Dict, Tuple
+import json
 import os
-os.environ["ANONYMIZED_TELEMETRY"] = "False"
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+
+from config import settings
+from logger import logger
 class RiskScoringEngine:
     """
     Compute risk scores for TawasolPay vulnerabilities using weighted multi-dimensional framework.
@@ -51,19 +54,43 @@ class RiskScoringEngine:
         self._preprocess()
 
     def _preprocess(self) -> None:
-        """Clean and prepare data."""
-        # Handle missing values
-        self.df['threat_actor'] = self.df['threat_actor'].fillna('Unknown')
-        self.df['knownRansomwareCampaignUse'] = self.df['knownRansomwareCampaignUse'].fillna('Unknown')
-        self.df['ransomware_association'] = self.df['ransomware_association'].fillna('No')
-        self.df['risk_appetite'] = self.df['risk_appetite'].fillna('Medium')
-        self.df['data_classification'] = self.df['data_classification'].fillna('Internal Confidential')
+        """Clean and prepare data defensively handling missing columns."""
+        defaults = {
+            'threat_actor': 'Unknown',
+            'knownRansomwareCampaignUse': 'Unknown',
+            'ransomware_association': 'No',
+            'risk_appetite': 'Medium',
+            'data_classification': 'Internal Confidential',
+            'severity': 'Medium',
+            'criticality': 'Medium',
+            'environment': 'Development',
+            'revenue_impact': 'Low',
+            'internet_exposed': 'No',
+            'auth_required': 'No',
+            'customer_facing': 'No',
+            'edr_installed': 'No',
+            'patch_available': 'No',
+            'exploit_available': 'No',
+            'compliance_scope': '',
+        }
+        for col, default_val in defaults.items():
+            if col in self.df.columns:
+                self.df[col] = self.df[col].fillna(default_val)
+            else:
+                self.df[col] = default_val
         
         # Coerce numeric columns
-        self.df['cvss'] = pd.to_numeric(self.df['cvss'], errors='coerce').fillna(5.0)
-        self.df['days_open'] = pd.to_numeric(self.df['days_open'], errors='coerce').fillna(0)
-        self.df['last_seen_days'] = pd.to_numeric(self.df['last_seen_days'], errors='coerce').fillna(0)
-        self.df['rto_hours'] = pd.to_numeric(self.df['rto_hours'], errors='coerce').fillna(24)
+        numeric_defaults = {
+            'cvss': 5.0,
+            'days_open': 0,
+            'last_seen_days': 0,
+            'rto_hours': 24,
+        }
+        for col, num_default in numeric_defaults.items():
+            if col in self.df.columns:
+                self.df[col] = pd.to_numeric(self.df[col], errors='coerce').fillna(num_default)
+            else:
+                self.df[col] = num_default
 
     def _encode_yes_no(self, val) -> int:
         """Convert Yes/No to 0/1."""
@@ -312,62 +339,42 @@ class RiskScoringEngine:
 
 def main():
     """Example usage: load CSV, compute scores, print top 5."""
-    from pathlib import Path
-    project_root = Path(__file__).resolve().parent.parent
+    input_path = settings.RAW_DATA_DIR / "master_risk_table.csv"
+    if not input_path.exists():
+        logger.warning(f"Master table not found at {input_path}, building now...")
+        from data_pipeline import DataIngestionEngine
+        DataIngestionEngine().build_master_risk_table()
+
     # Load master table
-    df = pd.read_csv(project_root / 'data' / 'raw' / 'master_risk_table.csv')
-    # Initialize engine
+    df = pd.read_csv(input_path)
     engine = RiskScoringEngine(df)
     
     # Compute scores
     scored_df = engine.compute_scores()
-    
-    # Get top 5
     top_5 = engine.get_top_risks(n=5)
-    # In main(), after getting top_5:
 
-       # CSV — for analysts, Excel, BI tools
-    top_5.to_csv(project_root / 'top_5_risks.csv', index=False)
+    # Persist top risks
+    top_5.to_csv(settings.OUTPUT_DIR / "top_5_risks.csv", index=False)
 
-    # JSON — for APIs, dashboards, downstream automation
     top_5_payload = {
-        'generated_at': pd.Timestamp.now().isoformat(),
-        'scoring_version': '1.0',
-        'weights': RiskScoringEngine.DIMENSION_WEIGHTS,
-        'summary': engine.get_summary_stats(),
-        'top_risks': top_5.to_dict(orient='records'),
+        "generated_at": pd.Timestamp.now().isoformat(),
+        "scoring_version": "1.0",
+        "weights": RiskScoringEngine.DIMENSION_WEIGHTS,
+        "summary": engine.get_summary_stats(),
+        "top_risks": top_5.to_dict(orient="records"),
     }
-    import json
-    with open(project_root / 'top_5_risks.json', 'w') as f:
+    with open(settings.OUTPUT_DIR / "top_5_risks.json", "w") as f:
         json.dump(top_5_payload, f, indent=2, default=str)
 
-    print("\n" + "="*80)
-    print("TOP 5 RISKS — TAWASOLPAY CYBER RISK BRIEFING")
-    print("="*80 + "\n")
-    
+    logger.info("TOP 5 RISKS — TAWASOLPAY CYBER RISK BRIEFING")
     for idx, (i, row) in enumerate(top_5.iterrows(), 1):
-        print(f"{idx}. {row['asset_name']} — {row['vulnerability_name']}")
-        print(f"   CVE: {row['cve']}")
-        print(f"   Risk Score: {row['risk_score']:.2f} / 10")
-        print(f"     • Threat: {row['threat_score']:.1f} | Exposure: {row['exposure_score']:.1f} | Business: {row['criticality_score']:.1f} | Severity: {row['severity_score']:.1f} | Hygiene: {row['hygiene_score']:.1f}")
-        print(f"   Service: {row['business_service']} | Environment: {row['environment']} | Internet-Exposed: {row['internet_exposed']}")
-        print(f"   Threat Actor: {row['threat_actor']} | Ransomware: {row['knownRansomwareCampaignUse']}")
-        print(f"   Exploit Available: {row['exploit_available']} | Patch Available: {row['patch_available']} | Days Open: {row['days_open']}")
-        print()
-    
-    # Summary
-    stats = engine.get_summary_stats()
-    print("\n" + "="*80)
-    print("SUMMARY STATISTICS")
-    print("="*80)
-    for key, val in stats.items():
-        print(f"{key}: {val}")
-    print()
+        logger.info(f"{idx}. {row['asset_name']} — {row['vulnerability_name']} (Score: {row['risk_score']:.2f}/10)")
     
     # Save scored results
-    scored_df.to_csv('../scored_vulnerabilities.csv', index=False)
-    print("✓ Full scored results saved to output/scored_vulnerabilities.csv")
+    scored_output_path = settings.OUTPUT_DIR / "scored_vulnerabilities.csv"
+    scored_df.to_csv(scored_output_path, index=False)
+    logger.info(f"[OK] Full scored results saved to {scored_output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

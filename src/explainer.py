@@ -3,29 +3,24 @@ LLM Explainer — Grounded risk explanation with human-readable output.
 Takes top-N risks from RiskScoringEngine and produces actionable briefing entries
 formatted for technical managers (not JSON, not tables, not raw data).
 """
-import os
 import json
-import logging
+import os
+from typing import Dict, List, Optional, Tuple
+
 import pandas as pd
-from typing import List, Dict
-from groq import Groq
 from dotenv import load_dotenv
 
+from config import settings
+from logger import logger
+from model_router import model_router
 from rag_agent import retrieve_controls
-
-os.environ["ANONYMIZED_TELEMETRY"] = "False"
-
-load_dotenv()
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+from security import sanitize_risk_record
 
 # ----------------------------- Configuration -----------------------------
 
-GROQ_MODEL = "llama-3.3-70b-versatile"
-TOP_K_PER_QUERY = 3
-TEMPERATURE = 0.2
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+GROQ_MODEL = settings.PRIMARY_MODEL
+TOP_K_PER_QUERY = settings.TOP_K_PER_QUERY
+TEMPERATURE = settings.LLM_TEMPERATURE
 
 # ----------------------------- Prompts -----------------------------
 
@@ -153,22 +148,20 @@ def format_candidates_for_prompt(candidates: List[Dict]) -> str:
 
 
 def call_llm(risk: Dict, candidates: List[Dict]) -> Dict:
-    """Make the grounded LLM call. Returns parsed JSON."""
+    """Make the grounded LLM call with retry, fallback, and validation."""
+    sanitized_risk = sanitize_risk_record(risk)
     user_message = (
-        f"RISK RECORD:\n{format_risk_for_prompt(risk)}\n\n"
-        f"CANDIDATE NIST CONTROLS (pick ONE):\n{format_candidates_for_prompt(candidates)}"
+        f"<risk_record>\n{format_risk_for_prompt(sanitized_risk)}\n</risk_record>\n\n"
+        f"<candidate_nist_controls>\n{format_candidates_for_prompt(candidates)}\n</candidate_nist_controls>"
     )
 
-    response = client.chat.completions.create(
-        model=GROQ_MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=TEMPERATURE,
-        response_format={"type": "json_object"},
+    explanation, telemetry = model_router.generate_explanation(
+        risk=sanitized_risk,
+        candidates=candidates,
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=user_message,
     )
-    return json.loads(response.choices[0].message.content)
+    return explanation
 
 
 # ----------------------------- Validation -----------------------------
@@ -331,24 +324,25 @@ def explain_top_risks(top_risks_records: List[Dict]) -> tuple:
 
 # ----------------------------- Output Generation -----------------------------
 
-def save_briefing(json_results: List[Dict], human_text: str, output_dir: str = ".."):
+def save_briefing(json_results: List[Dict], human_text: str, output_dir: Optional[str] = None):
     """Save both JSON (for systems) and readable text (for humans)."""
+    target_dir = str(output_dir) if output_dir else str(settings.OUTPUT_DIR)
     
     # Save JSON for downstream systems
-    json_path = f"{output_dir}/briefing.json"
-    with open(json_path, "w") as f:
+    json_path = os.path.join(target_dir, "briefing.json")
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(json_results, f, indent=2, default=str)
-    logger.info(f"✓ JSON briefing saved to {json_path}")
+    logger.info(f"[OK] JSON briefing saved to {json_path}")
 
     # Save human-readable text
-    text_path = f"{output_dir}/briefing.txt"
-    with open(text_path, "w") as f:
+    text_path = os.path.join(target_dir, "briefing.txt")
+    with open(text_path, "w", encoding="utf-8") as f:
         f.write("TAWASOLPAY CYBER RISK BRIEFING\n")
         f.write(f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-        f.write(f"Classification: Confidential — Security Management\n")
+        f.write("Classification: Confidential — Security Management\n")
         f.write("="*80 + "\n")
         f.write(human_text)
-    logger.info(f"✓ Human-readable briefing saved to {text_path}")
+    logger.info(f"[OK] Human-readable briefing saved to {text_path}")
 
     # Also print to console
     print(human_text)

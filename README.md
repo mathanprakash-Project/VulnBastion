@@ -1,6 +1,6 @@
-# Vulnbastion: AI-Powered Risk Intelligence
+# TawasolPay ThreatLens: AI-Powered Risk Intelligence
 
-**Vulnbastion** is a live, multi-dimensional cyber risk analysis tool built with Streamlit. It leverages a Retrieval-Augmented Generation (RAG) architecture to map scored vulnerabilities to specific NIST SP 800-53 Rev. 5 controls, providing explainable and actionable remediation guidance via Groq-powered LLMs (Llama 3.3 70B).
+**TawasolPay ThreatLens** is a live, multi-dimensional cyber risk analysis tool built with Streamlit. It leverages a Retrieval-Augmented Generation (RAG) architecture to map scored vulnerabilities to specific NIST SP 800-53 Rev. 5 controls, providing explainable and actionable remediation guidance via Groq-powered LLMs (Llama 3.3 70B).
 
 ## Features
 * **Multi-Dimensional Risk Scoring:** Automatically ingests and scores vulnerabilities across threat, exposure, business criticality, severity, and hygiene metrics.
@@ -18,8 +18,8 @@
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/mathanprakash-Project/VulnBastion.git
-cd VulunBastion
+git clone https://github.com/jk-7-dev/tawasolpay-risk-assistant.git
+cd tawasolpay-risk-assistant
 ```
 
 **2. Create a Virtual Environment**
@@ -74,7 +74,7 @@ CVSS measures abstract technical severity, which systematically over-rates isola
 ## Project Structure
 
 ```text
-VulunBastion/
+tawasolpay-risk-assistant/
 ├── src/
 │   ├── app.py                            # Streamlit UI entry point
 │   ├── data_pipeline.py                  # Data ingestion & left-joins

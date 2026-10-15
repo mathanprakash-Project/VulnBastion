@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cybersentinel-ingress
+  namespace: cybersentinel
+  labels:
+    app.kubernetes.io/name: vulnbastion
+    app.kubernetes.io/part-of: tawasolpay-security
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # Streamlit requires websocket upgrades
+    nginx.ingress.kubernetes.io/websocket-services: "cybersentinel-dashboard-svc"
+spec:
+  rules:
+    - host: cybersentinel.tawasolpay.internal
+      http:
+        paths:
+          # API & Health Routes
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: cybersentinel-api-svc
+                port:
+                  number: 8000
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: cybersentinel-api-svc
+                port:
+                  number: 8000
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: cybersentinel-api-svc
+                port:
+                  number: 8000
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: cybersentinel-api-svc
+                port:
+                  number: 8000
+          # Frontend Streamlit Dashboard
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cybersentinel-dashboard-svc
+                port:
+                  number: 8501
+

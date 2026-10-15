@@ -1,53 +1,50 @@
-import pandas as pd
-import requests
 import io
 import os
 from pathlib import Path
+from typing import Tuple
+
+import pandas as pd
+import requests
+
+from config import settings
+from logger import logger
+
 
 class DataIngestionEngine:
     def __init__(self, data_dir=None):
         if data_dir is None:
-            # Compute absolute path based on this file's location
-            # __file__ is .../src/data_pipeline.py
-            # .parent is .../src/
-            # .parent.parent is the project root
-            project_root = Path(__file__).resolve().parent.parent
-            self.data_dir = str(project_root / "data" / "raw")
+            self.data_dir = str(settings.RAW_DATA_DIR)
         else:
-            # If a path is passed, resolve it to absolute
             data_path = Path(data_dir)
             if not data_path.is_absolute():
-                # Resolve relative to this file's location, not CWD
-                project_root = Path(__file__).resolve().parent.parent
-                # Strip leading "../" if present and resolve from project root
-                data_path = (project_root / data_path).resolve()
+                data_path = (settings.PROJECT_ROOT / data_path).resolve()
             self.data_dir = str(data_path)
 
-    def load_internal_data(self):
+    def load_internal_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Loads TawasolPay's internal CSV data into Pandas DataFrames."""
-        print(f"Loading internal CSVs from: {self.data_dir}")
-        assets_df = pd.read_csv(os.path.join(self.data_dir, "assets.csv"))
-        vulns_df = pd.read_csv(os.path.join(self.data_dir, "vulnerabilities.csv"))
-        threats_df = pd.read_csv(os.path.join(self.data_dir, "threat_intelligence.csv"))
-        services_df = pd.read_csv(os.path.join(self.data_dir, "business_services.csv"))
+        logger.info(f"Loading internal CSVs from: {self.data_dir}")
+        assets_df = pd.read_csv(os.path.join(self.data_dir, settings.ASSETS_FILE))
+        vulns_df = pd.read_csv(os.path.join(self.data_dir, settings.VULNERABILITIES_FILE))
+        threats_df = pd.read_csv(os.path.join(self.data_dir, settings.THREAT_INTEL_FILE))
+        services_df = pd.read_csv(os.path.join(self.data_dir, settings.BUSINESS_SERVICES_FILE))
         return assets_df, vulns_df, threats_df, services_df
 
-    def fetch_cisa_kev(self):
-        # Define where the external data should live
-        external_dir = self.data_dir.replace("raw", "external")
+    def fetch_cisa_kev(self) -> pd.DataFrame:
+        """Loads CISA KEV from local cache or fetches from official US Gov endpoint."""
+        external_dir = str(settings.EXTERNAL_DATA_DIR)
         os.makedirs(external_dir, exist_ok=True) 
         
-        kev_file_path = os.path.join(external_dir, "known_exploited_vulnerabilities.csv")
+        kev_file_path = os.path.join(external_dir, settings.CISA_KEV_FILE)
         
         if os.path.exists(kev_file_path):
-            print("Loading CISA KEV data from local cache...")
+            logger.info("Loading CISA KEV data from local cache...")
             return pd.read_csv(kev_file_path)
         
-        # 2. If not, fetch it from the web
-        print("Fetching external CISA KEV data from US Gov...")
-        url = "https://www.cisa.gov/sites/default/files/csv/known_exploited_vulnerabilities.csv"
+        # 2. If not, fetch it from the web with retry
+        logger.info("Fetching external CISA KEV data from US Gov...")
+        url = settings.CISA_KEV_URL
         try:
-            response = requests.get(url, timeout=15)
+            response = requests.get(url, timeout=settings.CISA_KEV_TIMEOUT_SECONDS)
             response.raise_for_status()
             
             # Save it locally for next time
@@ -57,7 +54,7 @@ class DataIngestionEngine:
             kev_df = pd.read_csv(io.StringIO(response.text))
             return kev_df
         except requests.exceptions.RequestException as e:
-            print(f"Warning: Could not fetch CISA KEV. Defaulting to empty dataframe. Error: {e}")
+            logger.warning(f"Could not fetch CISA KEV. Defaulting to empty dataframe. Error: {e}")
             return pd.DataFrame(columns=["cveID", "knownRansomwareCampaignUse"])
         
     def build_master_risk_table(self):
@@ -96,7 +93,7 @@ class DataIngestionEngine:
         master_df['knownRansomwareCampaignUse'] = master_df['knownRansomwareCampaignUse'].fillna('Unknown')
         master_df['threat_actor'] = master_df['threat_actor'].fillna('None observed')
 
-        print(f"Master Risk Table built successfully with {len(master_df)} records.")
+        logger.info(f"Master Risk Table built successfully with {len(master_df)} records.")
         
         output_path = os.path.join(self.data_dir, "master_risk_table.csv")
         master_df.to_csv(output_path, index=False)

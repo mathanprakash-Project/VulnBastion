@@ -17,74 +17,81 @@ import streamlit as st
 from dotenv import load_dotenv
 
 # ----------------------------- Path Setup -----------------------------
+_SRC_DIR = Path(__file__).resolve().parent
+if str(_SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(_SRC_DIR))
 
-# ----------------------------- Path Setup -----------------------------
-
-SRC_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SRC_DIR.parent
-
-
-load_dotenv(PROJECT_ROOT / "key.env")
-
-# Local imports (must come AFTER chdir/sys.path)
+from config import settings
 from data_pipeline import DataIngestionEngine
-from risk_engine import RiskScoringEngine
-from rag_agent import build_index
 from explainer import explain_top_risks, format_briefing_entry, save_briefing
+from rag_agent import build_index
+from risk_engine import RiskScoringEngine
 
 # ----------------------------- Page Config -----------------------------
 
-# ----------------------------- Page Config -----------------------------
+st.set_page_config(
+    page_title="TawasolPay CyberSentinel",
+    page_icon="shield",
+    layout="wide",
+)
 
 # ----------------------------- Styles with Better Contrast & Sizing -----------------------------
 
 st.markdown("""
 <style>
-    /* VulnBastion Global Theme */
-    
-    /* Main headings - Neon Green */
+    /* Main headings */
     h1, h2, h3, h4, h5, h6 {
-        color: #00fa9a !important;
-        font-weight: 800 !important;
-        letter-spacing: 0.5px;
-        text-shadow: 0px 0px 10px rgba(0, 250, 154, 0.2);
+        color: #58d7ed !important;
+    }
+    
+    /* Increase font sizes */
+    h1 {
+        font-size: 2.5rem !important;
+    }
+    h2 {
+        font-size: 1.875rem !important;
+    }
+    h3 {
+        font-size: 1.5rem !important;
     }
     
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background-color: #0d1117;
-        border-right: 1px solid #2d3748;
-    }
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2,
-    [data-testid="stSidebar"] h3 {
-        color: #00fa9a !important;
-    }
-    [data-testid="stSidebar"] span, 
-    [data-testid="stSidebar"] p {
-        color: #c9d1d9 !important;
+        background-color: #0f172a;
     }
     
-    /* Card containers - Sleek Dark Mode */
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] header {
+        color: #58d7ed !important;
+        font-size: 1.375rem !important;
+    }
+    
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] small,
+    [data-testid="stSidebar"] span {
+        color: #58d7ed !important;
+    }
+    
+    [data-testid="stSidebar"] .stSlider label {
+        color: #58d7ed !important;
+        font-size: 1rem !important;
+    }
+    
+    /* Card containers */
     .risk-card {
-        background: #161b22; 
-        border: 1px solid #30363d; 
-        border-radius: 12px;
+        background: #ffffff; 
+        border: 2px solid #d1d5db; 
+        border-radius: 8px;
         padding: 1.5rem; 
         margin-bottom: 1.5rem;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out;
-    }
-    .risk-card:hover {
-        transform: translateY(-3px);
-        border-color: #00fa9a;
-        box-shadow: 0 8px 24px rgba(0, 250, 154, 0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
     }
     .risk-card-top { 
-        background: #1f1414; /* Slight red tint for critical */
-        border-color: #ff4444; 
-        border-top: 4px solid #ff4444;
-        border-left: 1px solid #ff4444;
+        background: #fef2f2; 
+        border-color: #dc2626; 
+        border-left: 5px solid #dc2626;
     }
     
     /* Rank badge */
@@ -92,42 +99,75 @@ st.markdown("""
         display: inline-flex; 
         align-items: center; 
         justify-content: center;
-        width: 60px; 
-        height: 60px; 
-        border-radius: 12px; /* Square fortress look instead of circle */
-        color: #ffffff; 
-        font-weight: 900; 
-        font-size: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        width: 56px; 
+        height: 56px; 
+        border-radius: 50%;
+        color: white; 
+        font-weight: bold; 
+        font-size: 1.35rem;
     }
-    .rank-critical { background: linear-gradient(135deg, #ff4444, #cc0000); }
-    .rank-high     { background: linear-gradient(135deg, #ff8800, #e65c00); }
-    .rank-medium   { background: linear-gradient(135deg, #ffbb33, #ff8800); }
+    .rank-critical { background: #dc2626; }
+    .rank-high     { background: #ea580c; }
+    .rank-medium   { background: #ca8a04; }
     
-    /* Info boxes */
-    .why-box, .nist-box, .threat-box, .exposure-box {
-        background: #0d1117; 
-        border-left: 4px solid #00fa9a;
+    /* Info boxes with high contrast */
+    .why-box {
+        background: #1f2937; 
+        border-left: 5px solid #58d7ed;
         padding: 1.25rem; 
-        border-radius: 6px; 
+        border-radius: 4px; 
         margin: 1rem 0;
-        border-right: 1px solid #30363d;
-        border-top: 1px solid #30363d;
-        border-bottom: 1px solid #30363d;
     }
-    .why-box-text, .nist-box-text, .threat-box-text, .exposure-box-text {
-        color: #c9d1d9;
-        font-size: 1.05rem;
+    .why-box-text {
+        color: #58d7ed;
+        font-size: 1rem;
         line-height: 1.6;
     }
     
-    /* Labels */
+    .nist-box {
+        background: #1f2937; 
+        border-left: 5px solid #58d7ed;
+        padding: 1.25rem; 
+        border-radius: 4px; 
+        margin: 1rem 0;
+    }
+    .nist-box-text {
+        color: #58d7ed;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+    
+    .threat-box {
+        background: #1f2937;
+        border-left: 5px solid #58d7ed;
+        padding: 1.25rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    .threat-box-text {
+        color: #58d7ed;
+        font-size: 1rem;
+    }
+    
+    .exposure-box {
+        background: #1f2937;
+        border-left: 5px solid #58d7ed;
+        padding: 1.25rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    .exposure-box-text {
+        color: #58d7ed;
+        font-size: 1rem;
+    }
+    
+    /* Labels with strong color */
     .label {
-        font-size: 0.85rem; 
+        font-size: 0.875rem; 
         text-transform: uppercase; 
-        font-weight: 800;
-        color: #00fa9a; 
-        letter-spacing: 0.1em;
+        font-weight: 700;
+        color: #58d7ed; 
+        letter-spacing: 0.05em;
         margin-top: 1rem;
         margin-bottom: 0.5rem;
     }
@@ -135,34 +175,47 @@ st.markdown("""
     /* Metric pills */
     .metric-pill {
         display: inline-block; 
-        padding: 0.4rem 1rem;
-        background: #0d1117; 
-        border: 1px solid #00fa9a;
-        border-radius: 4px;
-        font-size: 0.9rem; 
+        padding: 0.4rem 0.85rem;
+        background: #1f2937; 
+        border: 1px solid #58d7ed;
+        border-radius: 999px;
+        font-size: 0.95rem; 
         margin-right: 0.75rem;
         margin-bottom: 0.5rem;
-        color: #00fa9a;
-        font-weight: 600;
-        box-shadow: 0 0 8px rgba(0, 250, 154, 0.1);
+        color: #58d7ed;
+        font-weight: 500;
+    }
+    
+    /* Summary stats box */
+    .stats-box {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        padding: 1.25rem;
+        margin: 1rem 0;
+    }
+    .stats-box-text {
+        color: #15803d;
+        font-size: 1rem;
     }
     
     /* Horizontal line separator */
     .divider {
-        height: 1px;
-        background: linear-gradient(90deg, #00fa9a, transparent);
+        height: 2px;
+        background: linear-gradient(90deg, #58d7ed, rgba(88, 215, 237, 0.2));
         margin: 1.5rem 0;
         border: none;
     }
     
     /* Expander content styling */
     .expander-action {
-        color: #e6edf3 !important;
+        color: #58d7ed !important;
         font-size: 1rem;
         line-height: 1.6;
     }
+    
     .expander-action b {
-        color: #00fa9a !important;
+        color: #58d7ed !important;
     }
     
     /* Hide markdown dividers */
@@ -182,9 +235,7 @@ def cached_rag_collection():
 @st.cache_data(show_spinner=False)
 def cached_master_table() -> pd.DataFrame:
     """Build the joined master risk table (assets × vulns × threats × KEV × services)."""
-    from pathlib import Path
-    data_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
-    engine = DataIngestionEngine(data_dir=str(data_dir))
+    engine = DataIngestionEngine(data_dir=str(settings.RAW_DATA_DIR))
     return engine.build_master_risk_table()
 
 @st.cache_data(show_spinner=False)
@@ -280,7 +331,7 @@ def run_pipeline(top_n: int, status, progress, cards_slot):
             format_briefing_entry(r["risk"], r["explanation"], r["rank"])
             for r in results
         )
-        save_briefing(json_payload, human_text, output_dir=str(PROJECT_ROOT))
+        save_briefing(json_payload, human_text, output_dir=str(settings.OUTPUT_DIR))
     except Exception as e:
         st.warning(f"Could not save dashboard artifacts: {e}")
 
@@ -454,7 +505,6 @@ def render_card(entry):
 
 # ----------------------------- Sidebar with Better Colors & Sizing -----------------------------
 
-# ----------------------------- Sidebar -----------------------------
 with st.sidebar:
     st.header("Configuration")
     top_n = st.slider("Number of risks to analyze", 3, 10, 5)
@@ -462,9 +512,9 @@ with st.sidebar:
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
     
     with st.container():
-        st.markdown("<h3 style='color:#00fa9a;font-size:1.25rem;'>Pipeline Stages</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#58d7ed;font-size:1.25rem;'>Pipeline Stages</h3>", unsafe_allow_html=True)
         st.markdown(
-            "<span style='color:#c9d1d9;font-size:1rem;'>"
+            "<span style='color:#58d7ed;font-size:1rem;'>"
             "1. Data ingestion (CSVs + CISA KEV)<br>"
             "2. Multi-dimensional risk scoring<br>"
             "3. Rank top N risks<br>"
@@ -472,16 +522,6 @@ with st.sidebar:
             "5. LLM-grounded explanations<br>"
             "6. Save dashboard artifacts"
             "</span>",
-            unsafe_allow_html=True,
-        )
-
-    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-    
-    st.markdown("<h3 style='color:#00fa9a;font-size:1.25rem;'>Scoring Weights</h3>", unsafe_allow_html=True)
-    for dim, w in RiskScoringEngine.DIMENSION_WEIGHTS.items():
-        pct = int(w * 100)
-        st.markdown(
-            f"<span style='color:#00fa9a;font-size:1rem;'><b>{dim.title()}:</b> <span style='color:#c9d1d9;'>{pct}%</span></span><br>",
             unsafe_allow_html=True,
         )
 
@@ -501,15 +541,13 @@ with st.sidebar:
         st.cache_resource.clear()
         st.success("Caches cleared. Next run will reload everything.")
 
-    if not os.getenv("GROQ_API_KEY"):
-        st.error("GROQ_API_KEY not set in key.env")
+    if not settings.has_valid_api_key:
+        st.info("GROQ_API_KEY not configured. Running with grounded deterministic fallback.")
 
 # ----------------------------- Main UI -----------------------------
 
-# ----------------------------- Main UI -----------------------------
-
-st.title("🏰 VulnBastion: Advanced Risk Intelligence")
-st.caption("Automated Multi-Dimensional Risk Analysis & NIST 800-53 Remediation Dashboard")
+st.title("TawasolPay CyberSentinel: Live Risk & Remediation Dashboard")
+st.caption("Live multi-dimensional risk analysis with NIST 800-53 remediation guidance")
 
 if "dashboard" not in st.session_state:
     st.session_state.dashboard = None

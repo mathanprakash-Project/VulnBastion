@@ -234,17 +234,16 @@ def validate_explanation(explanation: dict, must_mention: list) -> tuple:
 
 
 def main():
-    if not os.getenv("GROQ_API_KEY"):
-        print("ERROR: GROQ_API_KEY not set in environment.")
-        sys.exit(1)
+    from config import settings
+
+    mode_label = "LIVE GROQ API" if settings.has_valid_api_key else "DETERMINISTIC GROUNDED FALLBACK"
+    print("\n" + "=" * 80)
+    print(f"LLM EXPLAINER TEST — REAL TOP-5 RISKS ({mode_label})")
+    print("=" * 80)
 
     passed = 0
     failed = 0
     latencies = []
-
-    print("\n" + "=" * 80)
-    print("LLM EXPLAINER TEST — REAL TOP-5 RISKS (GROQ API)")
-    print("=" * 80)
 
     for i, risk in enumerate(TEST_RISKS, 1):
         cve = risk["cve"]
@@ -265,12 +264,12 @@ def main():
             elapsed = time.time() - t0
             latencies.append(elapsed)
         except Exception as e:
-            print(f"  ✗ FAIL — exception: {type(e).__name__}: {e}")
+            print(f"  [X] FAIL — exception: {type(e).__name__}: {e}")
             failed += 1
             continue
 
         if explanation is None:
-            print(f"  ✗ FAIL — explanation is None (no candidates retrieved)")
+            print(f"  [X] FAIL — explanation is None (no candidates retrieved)")
             failed += 1
             continue
 
@@ -293,13 +292,13 @@ def main():
         print(f"  Metric:         {metric_preview}{'...' if len(metric_preview) == 100 else ''}")
 
         if explanation.get("_validation_warning"):
-            print(f"  ⚠ WARNING: control was auto-corrected (LLM picked outside candidates)")
+            print("  [WARN] control was auto-corrected (LLM picked outside candidates)")
 
         if ok:
-            print(f"  → PASS (found expected keywords + grounded in candidates)")
+            print("  ==> PASS (found expected keywords + grounded in candidates)")
             passed += 1
         else:
-            print(f"  → FAIL")
+            print("  ==> FAIL")
             for issue in issues:
                 print(f"      - {issue}")
             failed += 1

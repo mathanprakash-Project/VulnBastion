@@ -1,30 +1,22 @@
-"""
-NIST 800-53 RAG Index Builder & Retriever
-Embeds NIST controls into ChromaDB for semantic search using BGE model.
-"""
-import pandas as pd
-import chromadb
-from chromadb.utils import embedding_functions
-from pathlib import Path
-import logging
 import os
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
-# Configuration
+import pandas as pd
+import chromadb
+from chromadb.config import Settings as ChromaSettings
+from chromadb.utils import embedding_functions
 from pathlib import Path
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-NIST_CSV_PATH = _PROJECT_ROOT / "data" / "external" / "NIST_SP-800-53_rev5_catalog_load.csv"
 
-CHROMA_DIR = "../data/chroma_nist"
-COLLECTION_NAME = "nist_800_53"
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
-BATCH_SIZE = 100
+from config import settings
+from logger import logger
 
-# BGE Query Prefix for asymmetric retrieval
-BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+# Configuration sourced from settings
+NIST_CSV_PATH = settings.EXTERNAL_DATA_DIR / settings.NIST_CATALOG_FILE
+CHROMA_DIR = str(settings.CHROMA_DIR)
+COLLECTION_NAME = settings.COLLECTION_NAME
+EMBEDDING_MODEL = settings.EMBEDDING_MODEL
+BATCH_SIZE = settings.BATCH_SIZE
+BGE_QUERY_PREFIX = settings.BGE_QUERY_PREFIX
 
 
 def load_nist_csv() -> pd.DataFrame:
@@ -109,7 +101,10 @@ def build_index(force_rebuild: bool = True) -> chromadb.Collection:
     """
     Path(CHROMA_DIR).mkdir(parents=True, exist_ok=True)
     
-    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    client = chromadb.PersistentClient(
+        path=CHROMA_DIR,
+        settings=ChromaSettings(anonymized_telemetry=False)
+    )
     embedder = initialize_embedder()
     
     # Check if collection exists
@@ -151,7 +146,7 @@ def build_index(force_rebuild: bool = True) -> chromadb.Collection:
         )
         logger.debug(f"Added batch {i // BATCH_SIZE + 1}")
     
-    logger.info(f"✓ Index built successfully. {collection.count()} controls indexed.")
+    logger.info(f"[OK] Index built successfully. {collection.count()} controls indexed.")
     return collection
 
 

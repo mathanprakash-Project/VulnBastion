@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cybersentinel-config
+  namespace: cybersentinel
+  labels:
+    app.kubernetes.io/name: vulnbastion
+    app.kubernetes.io/part-of: tawasolpay-security
+data:
+  ENVIRONMENT: "production"
+  DEBUG: "false"
+  LOG_LEVEL: "INFO"
+  STRUCTURED_LOGS: "true"
+  REQUIRE_AUTH: "true"
+  RATE_LIMIT_PER_MINUTE: "120"
+  WORKER_MAX_CONCURRENT_JOBS: "4"
+  WORKER_JOB_TIMEOUT_SECONDS: "180"
+  WORKER_MAX_RETRIES: "3"
+  PRIMARY_MODEL: "llama-3.3-70b-versatile"
+  FALLBACK_MODEL: "llama-3.1-8b-instant"
+  LLM_TEMPERATURE: "0.2"
+  LLM_TIMEOUT_SECONDS: "30.0"
+  LLM_MAX_RETRIES: "3"
+  ALLOW_MOCK_FALLBACK: "false"
+  TOP_K_PER_QUERY: "3"
+  CHROMA_TELEMETRY: "false"
+

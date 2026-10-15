@@ -48,14 +48,14 @@ def test_realistic_queries():
         match = any(f in hit_families for f in risk["expected_families"])
         
         for h in hits:
-            marker = "✓" if h["identifier"].split("-")[0] in risk["expected_families"] else " "
+            marker = "[MATCH]" if h["identifier"].split("-")[0] in risk["expected_families"] else "       "
             print(f"  {marker} [{h['identifier']}] {h['name']} (dist={h['distance']:.3f})")
         
         if match:
-            print(f"  → PASS (found expected family)")
+            print("  ==> PASS (found expected family)")
             passed += 1
         else:
-            print(f"  → FAIL (no expected family in top 5)")
+            print("  ==> FAIL (no expected family in top 5)")
             failed += 1
     
     print(f"\n{'='*70}")

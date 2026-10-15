@@ -4,9 +4,21 @@ __pycache__/
 *.pyc
 *.egg-info/
 .streamlit/secrets.toml
-data/chroma_nist/
-*.csv
 .venv/
 venv/
 .cache/
-key.env
+.pytest_cache/
+*.log
+
+# Generated output artifacts in root
+/scored_vulnerabilities.csv
+/top_5_risks.csv
+/top_5_risks.json
+/briefing.json
+/briefing.txt
+
+# Duplicate unpacked directory
+tawasolpay-risk-assistant-main/
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm

@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cybersentinel-api-svc
+  namespace: cybersentinel
+  labels:
+    app.kubernetes.io/name: cybersentinel-api
+    app.kubernetes.io/component: backend-api
+    app.kubernetes.io/part-of: tawasolpay-security
+spec:
+  type: ClusterIP
+  selector:
+    app: cybersentinel-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cybersentinel-dashboard-svc
+  namespace: cybersentinel
+  labels:
+    app.kubernetes.io/name: cybersentinel-dashboard
+    app.kubernetes.io/component: frontend-ui
+    app.kubernetes.io/part-of: tawasolpay-security
+spec:
+  type: ClusterIP
+  selector:
+    app: cybersentinel-dashboard
+  ports:
+    - name: http
+      port: 8501
+      targetPort: 8501
+      protocol: TCP
+
